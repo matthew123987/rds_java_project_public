@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RDS Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .telemetry-value { @apply bg-white p-4 rounded-lg shadow; }
+        .telemetry-list-item { @apply text-sm text-gray-700 truncate; }
+        .telemetry-list-value { @apply font-mono bg-gray-100 px-2 py-1 rounded text-xs; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner { border: 4px solid rgba(0, 0, 0, .1); border-left-color: #4f46e5; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        .table-container { @apply bg-white rounded-lg shadow overflow-x-auto; }
+        .data-table { @apply min-w-full divide-y divide-gray-400; }
+        .data-table th { @apply px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300; }
+        .data-table td { @apply px-4 py-4 whitespace-nowrap border-r border-gray-300; }
+        .data-table th:last-child, .data-table td:last-child { @apply border-r-0; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900">database-1 RDS dashboard</h1>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-5">
+            <div class="lg:col-span-1 space-y-8 divide-y divide-gray-400 lg:pr-8">
+                <section class="pt-8 lg:pt-0">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">RDS Details</h2>
+                    <div class="telemetry-value">
+                        <p class="text-sm text-gray-800"><strong>PostgreSQL 17.5</strong> on x86_64-pc-linux-gnu, compiled by gcc (GCC) 12.4.0, 64-bit</p>
+                        <p class="text-sm text-gray-800 mt-2"><strong>db.t3.micro</strong></p>
+                        <p class="text-sm text-gray-800 mt-2"><strong>redacted.rds.amazonaws.com</strong></p>
+                        <p class="text-sm text-gray-800 mt-2"><strong>5432</strong></p>
+                    </div>
+                </section>
+
+                <section class="pt-8">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">CPU stats</h2>
+                    <div id="telemetry-os-metrics" class="telemetry-value min-h-[50px]">Loading...</div>
+                </section>
+                
+                <section class="pt-8">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Memory & swap stats</h2>
+                    <div id="telemetry-memory-stats" class="telemetry-value min-h-[50px]">Loading...</div>
+                </section>
+
+                <section class="pt-8">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Disk JSON</h2>
+                    <div class="telemetry-value">
+                        <pre class="text-xs bg-gray-900 text-white p-4 rounded overflow-x-auto"><code id="raw-io-json">Loading...</code></pre>
+                    </div>
+                </section>
+
+                <section class="pt-8">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Network JSON stats</h2>
+                    <div class="telemetry-value">
+                        <pre class="text-xs bg-gray-900 text-white p-4 rounded overflow-x-auto"><code id="network-json">Loading...</code></pre>
+                    </div>
+                </section>
+            </div>
+
+            <div class="lg:col-span-4 space-y-8 divide-y divide-gray-400 lg:border-l lg:border-gray-400 lg:pl-8">
+                <section class="pt-8 lg:pt-0">
+                    <div class="mb-4">
+                        <h2 class="text-2xl font-semibold text-gray-800">API --log-group-name RDSOSMetrics</h2>
+                        <ul class="text-xs font-normal text-gray-600 list-disc list-inside mt-1">
+                            <li>doesn't include idle > 20 min</li>
+                            <li>sometimes processes memory can be listed as "RDS processes" - process RSS + RDS memory RSS = pg_proctab RSS</li>
+                        </ul>
+                    </div>
+                     <div id="os-process-list" class="table-container"></div>
+                </section>
+
+                <section class="pt-8">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">pg_stat_activity + pg_proctab</h2>
+                     <div id="proctab-list" class="table-container"></div>
+                </section>
+                
+                <section class="pt-8">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Postgres logs</h2>
+                    <div class="telemetry-value">
+                        <pre class="text-xs bg-gray-900 text-white p-4 rounded whitespace-pre-wrap break-all"><code id="postgres-logs-output">Loading...</code></pre>
+                    </div>
+                </section>
+
+                <section class="pt-8">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">RDS events</h2>
+                    <div id="rds-events-list" class="bg-white rounded-lg shadow p-4 space-y-4 divide-y divide-gray-200"></div>
+                </section>
+                
+                <section class="pt-8">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Memory Demo</h2>
+                    <div class="flex flex-col space-y-3">
+                        <button onclick="executeQuery('1')" class="bg-orange-500 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-orange-600 transition duration-200 text-sm">Use a few hundred MB RAM - create temporary partitioned table with 5k children</button>
+                        <button onclick="executeQuery('2')" class="bg-red-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-red-700 transition duration-200 text-sm">Memory Nuke - begin; set local work_mem= '40 GB'; SELECT g % 2000 AS group_id, count(*) FROM generate_series(1, 2000000000) g GROUP BY 1; commit;</button>
+                        <button onclick="executeQuery('3')" class="bg-amber-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-amber-700 transition duration-200 text-sm">select pg_terminate_backend(pid) from pg_stat_activity where state='idle' and not usename= 'rdsadmin';</button>
+                    </div>
+                </section>
+
+                <section class="pt-8">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Query Result</h2>
+                    <div id="result-container" class="bg-white p-6 rounded-lg shadow min-h-[200px] overflow-x-auto">
+                        <div id="loading-indicator" class="hidden items-center justify-center">
+                            <div class="spinner"></div><span class="ml-3 text-gray-600">Fetching data...</span>
+                        </div>
+                        <div id="result-output"></div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = '';
+        const telemetryOsMetrics = document.getElementById('telemetry-os-metrics');
+        const telemetryMemoryStats = document.getElementById('telemetry-memory-stats');
+        const rawIoJson = document.getElementById('raw-io-json');
+        const networkJsonEl = document.getElementById('network-json');
+        const osProcessList = document.getElementById('os-process-list');
+        const proctabList = document.getElementById('proctab-list');
+        const rdsEventsList = document.getElementById('rds-events-list');
+        const postgresLogsOutput = document.getElementById('postgres-logs-output');
+        const resultOutput = document.getElementById('result-output');
+        const loadingIndicator = document.getElementById('loading-indicator');
+
+        async function fetchAllData() {
+            try {
+                const [telemetryRes, proctabRes, eventsRes, logsRes] = await Promise.all([
+                    fetch(`${API_BASE_URL}/api/telemetry`),
+                    fetch(`${API_BASE_URL}/api/proctab`),
+                    fetch(`${API_BASE_URL}/api/events`),
+                    fetch(`${API_BASE_URL}/api/postgres-logs`)
+                ]);
+
+                if (!telemetryRes.ok) throw new Error(`Telemetry HTTP error! status: ${telemetryRes.status}`);
+                const telemetryData = await telemetryRes.json();
+                renderMetrics(telemetryOsMetrics, telemetryData.osMetrics);
+                renderMetrics(telemetryMemoryStats, telemetryData.memoryStats);
+                renderRawIoJson(telemetryData.prettyIoJson);
+                renderNetworkJson(telemetryData.networkJson);
+                renderOsProcesses(telemetryData.osProcesses);
+
+                if (!proctabRes.ok) throw new Error(`Proctab HTTP error! status: ${proctabRes.status}`);
+                const proctabData = await proctabRes.json();
+                renderProctab(proctabData);
+
+                if (!eventsRes.ok) throw new Error(`Events HTTP error! status: ${eventsRes.status}`);
+                const eventsData = await eventsRes.json();
+                renderRdsEvents(eventsData);
+                
+                if (!logsRes.ok) throw new Error(`Postgres Logs HTTP error! status: ${logsRes.status}`);
+                const logsData = await logsRes.text();
+                renderPostgresLogs(logsData);
+
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                // Simple error handling for brevity
+                osProcessList.innerHTML = `<div class="p-4"><p class="text-red-500 text-sm">Error loading data.</p></div>`;
+                proctabList.innerHTML = `<div class="p-4"><p class="text-red-500 text-sm">Error loading data.</p></div>`;
+                rdsEventsList.innerHTML = `<div class="p-4"><p class="text-red-500 text-sm">Error loading data.</p></div>`;
+                postgresLogsOutput.textContent = 'Error loading logs.';
+            }
+        }
+
+        function renderPostgresLogs(data) {
+            if (typeof data !== 'string') {
+                postgresLogsOutput.textContent = 'Error: Invalid log data format.';
+                return;
+            }
+            // Trim whitespace from start/end and filter out any blank lines
+            const lines = data.trim().split('\n').filter(line => line.length > 0);
+            postgresLogsOutput.textContent = lines.join('\n');
+        }
+
+        function renderRdsEvents(data) {
+            rdsEventsList.innerHTML = '';
+             if (!data || data.length === 0) {
+                rdsEventsList.innerHTML = `<p class="text-gray-500 text-sm">No recent RDS events found.</p>`;
+                return;
+            }
+             if (data[0]?.error) {
+                rdsEventsList.innerHTML = `<p class="text-red-500 text-sm">Error: ${data[0].error}</p>`;
+                return;
+            }
+            data.forEach((event, index) => {
+                const eventDiv = document.createElement('div');
+                // Don't add padding-top to the very first event
+                eventDiv.className = index > 0 ? 'pt-4' : '';
+                
+                const dateP = document.createElement('p');
+                dateP.className = 'text-xs text-gray-500';
+                dateP.textContent = event.Date;
+                
+                const messageP = document.createElement('p');
+                messageP.className = 'text-sm text-gray-800';
+                messageP.textContent = event.Message;
+
+                eventDiv.appendChild(dateP);
+                eventDiv.appendChild(messageP);
+                rdsEventsList.appendChild(eventDiv);
+            });
+        }
+
+        function renderProctab(data) {
+            proctabList.innerHTML = '';
+            if (!data || data.length === 0) {
+                proctabList.innerHTML = `<div class="p-4"><p class="text-gray-500 text-sm">No pg_proctab data available.</p></div>`;
+                return;
+            }
+            const table = document.createElement('table');
+            table.className = 'data-table';
+            const headers = ['PID', 'RSS (MB)', 'User', 'DB', 'State', 'Wait Type', 'Wait Event', 'Query', 'Backend Start', 'Xact Start', 'Query Start', 'State Change', 'now'];
+            const keys = ['pid', 'rss_mb', 'usename', 'datname', 'pg_state', 'wait_event_type', 'wait_event', 'query', 'backend_start', 'xact_start', 'query_start', 'state_change', 'now'];
+
+            let headerHtml = '';
+            headers.forEach((h, i) => {
+                const borderClass = i < headers.length - 1 ? 'border-r border-gray-300' : '';
+                headerHtml += `<th class="${borderClass}">${h}</th>`;
+            });
+
+            table.innerHTML = `
+                <thead class="bg-gray-50">
+                    <tr>${headerHtml}</tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-400"></tbody>
+            `;
+            const tbody = table.querySelector('tbody');
+            
+            data.forEach(proc => {
+                const row = document.createElement('tr');
+                let cellHtml = '';
+                keys.forEach((key, i) => {
+                    let val = proc[key];
+                    if (val === null || val === undefined) {
+                        val = 'N/A';
+                    }
+                    if (key === 'rss_mb' && typeof val === 'number') val = val.toFixed(0);
+                    
+                    const borderClass = i < keys.length - 1 ? 'border-r border-gray-300' : '';
+                    cellHtml += `<td class="text-xs text-gray-700 ${borderClass}">${val}</td>`;
+                });
+                row.innerHTML = cellHtml;
+                tbody.appendChild(row);
+            });
+            proctabList.appendChild(table);
+        }
+
+        function renderMetrics(container, data) {
+            container.innerHTML = '';
+            if (!data || Object.keys(data).length === 0) {
+                container.innerHTML = `<p class="text-gray-500 text-sm">No metrics data.</p>`;
+                return;
+            }
+            if (data.error) {
+                container.innerHTML = `<p class="text-red-500 text-sm">Error: ${data.error}</p>`;
+                return;
+            }
+            const list = document.createElement('ul');
+            list.className = 'space-y-2';
+            for (const key in data) {
+                const li = document.createElement('li');
+                if (data[key] === "") {
+                    li.className = 'telemetry-list-item pt-2';
+                    li.innerHTML = `<span>${key}</span>`;
+                } else {
+                    li.className = 'flex justify-between items-center telemetry-list-item';
+                    li.innerHTML = `<span>${key}</span><span class="telemetry-list-value text-blue-700">${data[key]}</span>`;
+                }
+                list.appendChild(li);
+            }
+            container.appendChild(list);
+        }
+
+        function renderRawIoJson(jsonData) {
+            if (!jsonData) {
+                rawIoJson.textContent = 'No I/O JSON data available.';
+                return;
+            }
+            rawIoJson.textContent = jsonData;
+        }
+
+        function renderNetworkJson(jsonData) {
+            if (!jsonData) {
+                networkJsonEl.textContent = 'No Network JSON data available.';
+                return;
+            }
+            networkJsonEl.textContent = jsonData;
+        }
+
+        function renderOsProcesses(data) {
+            osProcessList.innerHTML = '';
+             if (!data || data.length === 0) {
+                osProcessList.innerHTML = `<div class="p-4"><p class="text-gray-500 text-sm">No OS process data available.</p></div>`;
+                return;
+            }
+            if (data[0]?.error) {
+                osProcessList.innerHTML = `<div class="p-4"><p class="text-red-500 text-sm">Error: ${data[0].error}</p></div>`;
+                return;
+            }
+            const table = document.createElement('table');
+            table.className = 'data-table';
+            table.innerHTML = `
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="border-r border-gray-300">PID</th>
+                        <th class="border-r border-gray-300">RSS (MB)</th>
+                        <th class="border-r border-gray-300">%CPU</th>
+                        <th>Process</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-400"></tbody>
+            `;
+            const tbody = table.querySelector('tbody');
+            data.sort((a, b) => {
+                const cpuA = a.cpu != null ? parseFloat(a.cpu) : 0;
+                const cpuB = b.cpu != null ? parseFloat(b.cpu) : 0;
+                return cpuB - cpuA;
+            });
+            data.slice(0, 10).forEach(proc => {
+                const row = document.createElement('tr');
+                const memoryMb = proc.memory != null ? parseFloat(proc.memory).toFixed(2) : 'N/A';
+                row.innerHTML = `
+                    <td class="text-sm text-gray-500 border-r border-gray-300">${proc.id || 'N/A'}</td>
+                    <td class="text-sm text-gray-500 border-r border-gray-300">${memoryMb}</td>
+                    <td class="text-sm text-gray-500 border-r border-gray-300">${proc.cpu != null ? parseFloat(proc.cpu).toFixed(2) + '%' : 'N/A'}</td>
+                    <td class="text-sm text-gray-800">${proc.name || 'N/A'}</td>
+                `;
+                tbody.appendChild(row);
+            });
+            osProcessList.appendChild(table);
+        }
+
+        async function executeQuery(queryId) {
+            loadingIndicator.style.display = 'flex';
+            resultOutput.innerHTML = '';
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/query/${queryId}`);
+                if (!response.ok) {
+                     const errorData = await response.json();
+                     throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                renderResultsAsTable(data);
+            } catch (error) {
+                console.error("Error executing query:", error);
+                resultOutput.innerHTML = `<p class="text-red-600 font-semibold">Error: ${error.message}</p>`;
+            } finally {
+                loadingIndicator.style.display = 'none';
+            }
+        }
+        
+        function renderResultsAsTable(data) {
+            resultOutput.innerHTML = '';
+            if (!data || data.length === 0) {
+                resultOutput.innerHTML = '<p class="text-gray-500">The query returned no results.</p>';
+                return;
+            }
+            if(data[0]?.error) {
+                 resultOutput.innerHTML = `<p class="text-red-600 font-semibold">Backend Error: ${data[0].error}</p>`;
+                 return;
+            }
+            const table = document.createElement('table');
+            table.className = 'data-table';
+            const headers = Object.keys(data[0]);
+            table.innerHTML = `
+                <thead class="bg-gray-50"><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+                <tbody class="bg-white divide-y divide-gray-400"></tbody>
+            `;
+            const tbody = table.querySelector('tbody');
+            data.forEach(rowData => {
+                const row = document.createElement('tr');
+                row.innerHTML = headers.map(h => `<td class="text-gray-700">${rowData[h]}</td>`).join('');
+                tbody.appendChild(row);
+            });
+            resultOutput.appendChild(table);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchAllData();
+            setInterval(fetchAllData, 10000);
+        });
+    </script>
+</body>
+</html>
