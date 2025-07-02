@@ -282,7 +282,7 @@ public class DataService {
         }
         Number numVcpus = (Number) osMetricsJson.get("numVCPUs");
         if (numVcpus != null) {
-            cpuStats.put("num vCPUs", String.valueOf(numVcpus.intValue()));
+            cpuStats.put("n vCPUs", String.valueOf(numVcpus.intValue()));
         }
         if (osMetricsJson.containsKey("cpuUtilization")) {
             Map<String, Object> cpuData = (Map<String, Object>) osMetricsJson.get("cpuUtilization");
