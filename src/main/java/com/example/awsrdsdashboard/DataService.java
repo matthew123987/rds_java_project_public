@@ -67,6 +67,7 @@ public class DataService {
 
             String logStreamName = describeStreamsResponse.logStreams().get(0).logStreamName();
 
+            long endTimeMillis = Instant.now().toEpochMilli();
             long startTimeMillis = Instant.now().minusSeconds(1800).toEpochMilli(); // 30 minutes ago
 
             // Now, get the log events from that stream
@@ -74,6 +75,7 @@ public class DataService {
                 .logGroupName("/aws/rds/instance/database-2/postgresql")
                 .logStreamName(logStreamName)
                 .startTime(startTimeMillis)
+                .endTime(endTimeMillis)
                 .limit(10)
                 .startFromHead(false) // Get the latest events
                 .build();
