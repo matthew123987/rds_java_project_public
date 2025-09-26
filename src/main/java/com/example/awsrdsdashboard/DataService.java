@@ -51,7 +51,7 @@ public class DataService {
 
     public String getPostgresLogs() {
         try {
-            String command = "aws logs get-log-events --log-group-name /aws/rds/instance/database-2/postgresql --log-stream-name \"$(aws logs describe-log-streams --log-group-name /aws/rds/instance/database-1/postgresql --order-by LastEventTime --descending --limit 1 --query \"logStreams[0].logStreamName\" --output text)\" --limit 25 --query \"events[].[timestamp, message]\" --output text --region eu-west-2";
+            String command = "aws logs get-log-events --log-group-name /aws/rds/instance/database-2/postgresql --log-stream-name \"$(aws logs describe-log-streams --log-group-name /aws/rds/instance/database-2/postgresql --order-by LastEventTime --descending --limit 1 --query \"logStreams[0].logStreamName\" --output text)\" --limit 25 --query \"events[].[timestamp, message]\" --output text --region eu-west-2";
             
             ProcessBuilder processBuilder = new ProcessBuilder("/bin/sh", "-c", command);
             Process process = processBuilder.start();
@@ -60,7 +60,7 @@ public class DataService {
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
             String line;
             while ((line = reader.readLine()) != null) {
-                output.append(line).append("\n");
+                output.append(line).append("\n");1
             }
 
             int exitCode = process.waitFor();
