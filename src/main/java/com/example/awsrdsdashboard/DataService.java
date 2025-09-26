@@ -88,10 +88,8 @@ public class DataService {
 
             StringBuilder output = new StringBuilder();
             for (OutputLogEvent event : getLogEventsResponse.events()) {
-                // Format is: timestamp message
-                output.append(event.timestamp())
-                      .append("\t")
-                      .append(event.message())
+                // Format is: message
+                output.append(event.message())
                       .append("\n");
             }
 
