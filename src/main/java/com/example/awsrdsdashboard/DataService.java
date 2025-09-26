@@ -39,7 +39,7 @@ public class DataService {
 
     private static final String RDS_RESOURCE_ID = "db-5CZOGBDK4QMID5GYSD5KG6JGYU";
     private static final String DB_INSTANCE_IDENTIFIER = "database-2";
-    //private static final String EC2_INSTANCE_ID = "i-0c990538f1035b4cf";
+    //private static final String EC2_INSTANCE_ID = "i-0cd05b0285bf30366";
 
     public DataService(@Value("${aws.region}") String awsRegion) {
         Region region = Region.of(awsRegion);
@@ -60,7 +60,7 @@ public class DataService {
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
             String line;
             while ((line = reader.readLine()) != null) {
-                output.append(line).append("\n");1
+                output.append(line).append("\n");
             }
 
             int exitCode = process.waitFor();
