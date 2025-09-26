@@ -51,31 +51,54 @@ public class DataService {
 
     public String getPostgresLogs() {
         try {
-            String command = "aws logs get-log-events --log-group-name /aws/rds/instance/database-2/postgresql --log-stream-name \"$(aws logs describe-log-streams --log-group-name /aws/rds/instance/database-2/postgresql --order-by LastEventTime --descending --limit 1 --query \"logStreams[0].logStreamName\" --output text)\" --limit 25 --query \"events[].[timestamp, message]\" --output text --region eu-west-2";
-            
-            ProcessBuilder processBuilder = new ProcessBuilder("/bin/sh", "-c", command);
-            Process process = processBuilder.start();
+            // First, find the latest log stream
+            software.amazon.awssdk.services.cloudwatchlogs.model.DescribeLogStreamsRequest describeStreamsRequest = software.amazon.awssdk.services.cloudwatchlogs.model.DescribeLogStreamsRequest.builder()
+                .logGroupName("/aws/rds/instance/database-2/postgresql")
+                .orderBy(software.amazon.awssdk.services.cloudwatchlogs.model.OrderBy.LAST_EVENT_TIME)
+                .descending(true)
+                .limit(1)
+                .build();
+
+            software.amazon.awssdk.services.cloudwatchlogs.model.DescribeLogStreamsResponse describeStreamsResponse = cloudWatchLogsClient.describeLogStreams(describeStreamsRequest);
+
+            if (describeStreamsResponse.logStreams() == null || describeStreamsResponse.logStreams().isEmpty()) {
+                return "No log streams found for Postgresql.";
+            }
+
+            String logStreamName = describeStreamsResponse.logStreams().get(0).logStreamName();
+
+            long endTimeMillis = Instant.now().toEpochMilli();
+            long startTimeMillis = Instant.now().minusSeconds(1800).toEpochMilli(); // 30 minutes ago
+
+            // Now, get the log events from that stream
+            GetLogEventsRequest getLogEventsRequest = GetLogEventsRequest.builder()
+                .logGroupName("/aws/rds/instance/database-2/postgresql")
+                .logStreamName(logStreamName)
+                .startTime(startTimeMillis)
+                .endTime(endTimeMillis)
+                .limit(10)
+                .startFromHead(false) // Get the latest events
+                .build();
+
+            GetLogEventsResponse getLogEventsResponse = cloudWatchLogsClient.getLogEvents(getLogEventsRequest);
+
+            if (getLogEventsResponse.events() == null || getLogEventsResponse.events().isEmpty()) {
+                return "No log events found in the latest stream.";
+            }
 
             StringBuilder output = new StringBuilder();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            String line;
-            while ((line = reader.readLine()) != null) {
-                output.append(line).append("\n");
+            for (OutputLogEvent event : getLogEventsResponse.events()) {
+                // Format is: message
+                output.append(event.message())
+                      .append("\n");
             }
 
-            int exitCode = process.waitFor();
-            if (exitCode != 0) {
-                StringBuilder error = new StringBuilder();
-                BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-                while ((line = errorReader.readLine()) != null) {
-                    error.append(line).append("\n");
-                }
-                return "Error executing command:\n" + error.toString();
-            }
             return output.toString();
 
         } catch (Exception e) {
-            return "Java Exception: " + e.getMessage();
+            // It's good practice to log the exception
+            e.printStackTrace();
+            return "Java Exception while fetching Postgres logs: " + e.getMessage();
         }
     }
 
