@@ -71,7 +71,7 @@ public class DataService {
             GetLogEventsRequest getLogEventsRequest = GetLogEventsRequest.builder()
                 .logGroupName("/aws/rds/instance/database-2/postgresql")
                 .logStreamName(logStreamName)
-                .limit(25)
+                .limit(10)
                 .startFromHead(false) // Get the latest events
                 .build();
 
