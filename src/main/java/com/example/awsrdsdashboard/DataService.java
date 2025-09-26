@@ -37,9 +37,9 @@ public class DataService {
     private final CloudWatchLogsClient cloudWatchLogsClient;
     private final ObjectMapper objectMapper;
 
-    private static final String RDS_RESOURCE_ID = "db-2QT427ABHNAAOUAZVBPOUWMTTM";
-    private static final String DB_INSTANCE_IDENTIFIER = "database-1";
-    private static final String EC2_INSTANCE_ID = "i-0cd05b0285bf30366";
+    private static final String RDS_RESOURCE_ID = "db-5CZOGBDK4QMID5GYSD5KG6JGYU";
+    private static final String DB_INSTANCE_IDENTIFIER = "database-2";
+    //private static final String EC2_INSTANCE_ID = "i-0cd05b0285bf30366";
 
     public DataService(@Value("${aws.region}") String awsRegion) {
         Region region = Region.of(awsRegion);
@@ -51,7 +51,7 @@ public class DataService {
 
     public String getPostgresLogs() {
         try {
-            String command = "aws logs get-log-events --log-group-name /aws/rds/instance/database-1/postgresql --log-stream-name \"$(aws logs describe-log-streams --log-group-name /aws/rds/instance/database-1/postgresql --order-by LastEventTime --descending --limit 1 --query \"logStreams[0].logStreamName\" --output text)\" --limit 25 --query \"events[].[timestamp, message]\" --output text --region eu-west-2";
+            String command = "aws logs get-log-events --log-group-name /aws/rds/instance/database-2/postgresql --log-stream-name \"$(aws logs describe-log-streams --log-group-name /aws/rds/instance/database-2/postgresql --order-by LastEventTime --descending --limit 1 --query \"logStreams[0].logStreamName\" --output text)\" --limit 25 --query \"events[].[timestamp, message]\" --output text --region eu-west-2";
             
             ProcessBuilder processBuilder = new ProcessBuilder("/bin/sh", "-c", command);
             Process process = processBuilder.start();
