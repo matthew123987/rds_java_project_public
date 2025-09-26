@@ -449,4 +449,8 @@ public class DataService {
             return "Error formatting Network JSON.";
         }
     }
+
+    public String getDbInstanceIdentifier() {
+        return DB_INSTANCE_IDENTIFIER;
+    }
 }

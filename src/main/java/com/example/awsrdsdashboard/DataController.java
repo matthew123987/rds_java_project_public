@@ -106,4 +106,14 @@ public class DataController {
             return ResponseEntity.internalServerError().body(Collections.singletonList(Map.of("error", e.getMessage(), "stackTrace", sw.toString())));
         }
     }
+
+    @GetMapping("/db-instance-identifier")
+    public ResponseEntity<String> getDbInstanceIdentifier() {
+        try {
+            String result = dataService.getDbInstanceIdentifier();
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(e.getMessage());
+        }
+    }
 }

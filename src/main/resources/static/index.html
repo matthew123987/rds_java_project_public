@@ -24,7 +24,7 @@
 
     <div class="max-w-7xl mx-auto">
         <header class="mb-8">
-            <h1 class="text-3xl font-bold text-gray-900">database-1 RDS dashboard</h1>
+            <h1 id="dashboard-title" class="text-3xl font-bold text-gray-900">RDS Dashboard</h1>
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-5">
@@ -127,6 +127,19 @@
         const postgresLogsOutput = document.getElementById('postgres-logs-output');
         const resultOutput = document.getElementById('result-output');
         const loadingIndicator = document.getElementById('loading-indicator');
+        const dashboardTitle = document.getElementById('dashboard-title');
+
+        async function fetchAndSetTitle() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/db-instance-identifier`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const dbName = await response.text();
+                dashboardTitle.textContent = `${dbName} RDS Dashboard`;
+            } catch (error) {
+                console.error("Error fetching DB instance identifier:", error);
+                dashboardTitle.textContent = 'RDS Dashboard';
+            }
+        }
 
         async function fetchAllData() {
             try {
@@ -381,6 +394,7 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            fetchAndSetTitle();
             fetchAllData();
             setInterval(fetchAllData, 10000);
         });
