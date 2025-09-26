@@ -76,7 +76,7 @@ public class DataService {
                 .logStreamName(logStreamName)
                 .startTime(startTimeMillis)
                 .endTime(endTimeMillis)
-                .limit(10)
+                .limit(20)
                 .startFromHead(false) // Get the latest events
                 .build();
 
